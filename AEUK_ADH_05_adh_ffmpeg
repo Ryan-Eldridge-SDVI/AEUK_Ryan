@@ -1,0 +1,1 @@
+ffmpeg -i $inputSpec:myInput -b:v {{DYNAMIC_PRESET_DATA['video_bitrate']}}k -codec:v {{DYNAMIC_PRESET_DATA['video_codec']}} -codec:a {{DYNAMIC_PRESET_DATA['audio_codec']}} -b:a {{DYNAMIC_PRESET_DATA['audio_bitrate']}}k {{DYNAMIC_PRESET_DATA['output_ffmpeg']}}

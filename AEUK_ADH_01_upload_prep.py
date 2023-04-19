@@ -4,11 +4,8 @@ from rally import files, asset, supplyChain
 
 
 def get_metadata_from_upload_widget(context):
-    """
-    Extract data from gateway dpd
-    :param context:
-    :return:
-    """
+    # Take and parse the data from the gateway
+
     widget_metadata = {"asset_name": None, "upload_metadata": []}
     file_uri = context.get("dynamicPresetData", {}).get("fileUri", "")
     if file_uri:
@@ -24,17 +21,14 @@ def get_metadata_from_upload_widget(context):
 
 
 def get_file_from_upload_md(upload_metadata):
-    """
-    Generator to create dpd dictionaries
-    :param bss_id
-    :param upload_metadata:
-    :return:
-    """
+    # Build dictionaries from the upload metadata provided in the gateway
+
     asset_name = asset.get_asset()['name']
     for upload_dict in upload_metadata:
         _dpd_dict = {"upload_gateway": {"metadata": {}, "file": {}}}
         md_name = jmespath.search("metadata.Name", upload_dict)
         md_type = jmespath.search('metadata."Media Type"', upload_dict)
+        destination = jmespath.search('metadata."Location Picker".value', upload_dict)
         md_filerename = jmespath.search('metadata."New Filename"', upload_dict) or ""
         is_selected = jmespath.search("selected", upload_dict)
         name = jmespath.search("upload.name", upload_dict)
@@ -46,12 +40,15 @@ def get_file_from_upload_md(upload_metadata):
             _dpd_dict["upload_gateway"]["file"]["name"] = name.split(".")[0]
             _dpd_dict["upload_gateway"]["file"]["ext"] = "." + name.split(".")[-1]
             _dpd_dict["upload_gateway"]["file"]["storage_location"] = storage_location
+            _dpd_dict["upload_gateway"]["file"]["destination_location"] = destination
             _dpd_dict["upload_gateway"]["file"]["rename"] = md_filerename.format({asset_name})
             _dpd_dict["upload_gateway"]["file"]["uri"] = f"rsl://{storage_location}/{name}"
             yield _dpd_dict
 
 
 def eval_main(context):
+    # Set values and build dynamic preset data
+
     metadata = asset.get_user_metadata()
     asset_name = asset.get_asset()['name']
     gateway_md = get_metadata_from_upload_widget(context)
@@ -60,28 +57,36 @@ def eval_main(context):
                         'media_file_ext': file_dpd["upload_gateway"]["file"]["ext"],
                         "prefix": file_dpd["upload_gateway"]["file"]["prefix"],
                         "storage": file_dpd["upload_gateway"]["file"]["storage_location"],
+                        "destination": file_dpd["upload_gateway"]["file"]["destination_location"],
                         "source_uri": file_dpd["upload_gateway"]["file"]["uri"],
                         "output_name": file_dpd["upload_gateway"]["file"]["name"] + file_dpd["upload_gateway"]["file"][
                             "ext"],
                         "file_label": file_dpd["upload_gateway"]["file"]["name"].split(".")[0]
                         }
+
+        # If the user wants to rename the file, use this file_dpd instead
+
         if file_dpd["upload_gateway"]["file"]["rename"]:
             # If rename detected, then add a step to sequence
             file_dpd["upload_gateway"]["file"]["name"] = file_dpd["upload_gateway"]["file"]["rename"].split(".")[0]
             rnm_dpd = {"source_uri": dynamic_data["source_uri"],  # rsl://CSC Landing Pad/933027_HENRY_TEST_file.wav
                        "storage_location": dynamic_data["storage"],  # CSC Landing Pad
                        "media_file_name": file_dpd["upload_gateway"]["file"]["rename"],
+                       "destination": file_dpd["upload_gateway"]["file"]["destination_location"],
                        "output_name": file_dpd["upload_gateway"]["file"]["name"] + file_dpd["upload_gateway"]["file"][
                            "ext"],
                        "file_label": file_dpd["upload_gateway"]["file"]["rename"].split(".")[0]
                        }
+
+            # Start the supply chain depending on the rename state
+
             print(rnm_dpd)
-            print('File uploaded and renamed successfully')
+            print('File(s) uploading and renaming')
             supplyChain.start_new_supply_chain(asset=asset_name, step='zz_upload_mover', dynamic_preset_data=rnm_dpd)
 
         else:
             print(dynamic_data)
-            print('File uploaded successfully')
+            print('File(s) uploading')
             supplyChain.start_new_supply_chain(asset=asset_name, step='zz_upload_mover',
                                                dynamic_preset_data=dynamic_data)
 

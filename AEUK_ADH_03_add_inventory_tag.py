@@ -4,6 +4,8 @@ import json
 import copy
 
 
+# Take and parse the data from the gateway
+
 def eval_main(context):
     dynamic_data = context.get('dynamicPresetData')
     if dynamic_data:
@@ -17,12 +19,16 @@ def eval_main(context):
 
         pprint.pprint('gateway_data:')
 
+        # Find the inventory asset selected in the Master Asset Inventory gateway
+
         for widget in gateway_data['data']:
             if widget['name'] == 'Master Asset Inventory':
                 label = widget['data'][0]['file']['attributes']['label']
         pprint.pprint(widget)
         src_file = next(files.get_inventory(label=label))
         pprint.pprint(src_file)
+
+        # Take the tag selected in the gateway and build tag_list
 
         for widget in gateway_data['data']:
             if widget['name'] == 'Tag list':
@@ -31,16 +37,20 @@ def eval_main(context):
                 metadata = widget['data'][0]['metadata']
                 tag_list = metadata.get('Tag List', {})
 
+                # If no tag is selected, raise an exception
+
                 try:
                     if not tag_list:
                         raise Exception('No Tag selected')
+
+                    # If tag does not currently exist, add it to the inventory asset
 
                     for key, value in tag_list.items():
                         src_file.add_tags([value])
                         print(f'Successfully added inventory tag: {value}')
 
                 except Exception as e:
-                    print(f'Error adding inventory Tag: {e}')
+                    print(f'Error Adding inventory Tag: {e}')
 
 
 def pprint_json(arg):
